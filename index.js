@@ -366,7 +366,7 @@
                 this.dimensions.HEIGHT, Runner.classes.PLAYER);
 
             this.canvasCtx = this.canvas.getContext('2d');
-            this.canvasCtx.fillStyle = '#170a2b';
+            this.canvasCtx.fillStyle = '#f7f7f7';
             this.canvasCtx.fill();
             Runner.updateCanvasScaling(this.canvas);
 
@@ -1082,7 +1082,19 @@
          */
         draw: function () {
             var dimensions = GameOverPanel.dimensions;
+
             var centerX = this.canvasDimensions.WIDTH / 2;
+
+            // Game over text.
+            var textSourceX = dimensions.TEXT_X;
+            var textSourceY = dimensions.TEXT_Y;
+            var textSourceWidth = dimensions.TEXT_WIDTH;
+            var textSourceHeight = dimensions.TEXT_HEIGHT;
+
+            var textTargetX = Math.round(centerX - (dimensions.TEXT_WIDTH / 2));
+            var textTargetY = Math.round((this.canvasDimensions.HEIGHT - 25) / 3);
+            var textTargetWidth = dimensions.TEXT_WIDTH;
+            var textTargetHeight = dimensions.TEXT_HEIGHT;
 
             var restartSourceWidth = dimensions.RESTART_WIDTH;
             var restartSourceHeight = dimensions.RESTART_HEIGHT;
@@ -1090,21 +1102,21 @@
             var restartTargetY = this.canvasDimensions.HEIGHT / 2;
 
             if (IS_HIDPI) {
+                textSourceY *= 2;
+                textSourceX *= 2;
+                textSourceWidth *= 2;
+                textSourceHeight *= 2;
                 restartSourceWidth *= 2;
                 restartSourceHeight *= 2;
             }
 
-            // Game over text — drawn as text, not from the atlas.
-            this.canvasCtx.save();
-            this.canvasCtx.fillStyle = '#ffd35c';
-            this.canvasCtx.font = 'bold 14px "Open Sans", sans-serif';
-            this.canvasCtx.textAlign = 'center';
-            this.canvasCtx.textBaseline = 'middle';
-            this.canvasCtx.shadowColor = 'rgba(255, 190, 80, 0.55)';
-            this.canvasCtx.shadowBlur = 8;
-            this.canvasCtx.fillText('u got squished like a berry 🫐💀',
-                centerX, Math.round((this.canvasDimensions.HEIGHT - 25) / 3) + 6);
-            this.canvasCtx.restore();
+            textSourceX += this.textImgPos.x;
+            textSourceY += this.textImgPos.y;
+
+            // Game over text from sprite.
+            this.canvasCtx.drawImage(Runner.imageSprite,
+                textSourceX, textSourceY, textSourceWidth, textSourceHeight,
+                textTargetX, textTargetY, textTargetWidth, textTargetHeight);
 
             // Restart button.
             this.canvasCtx.drawImage(Runner.imageSprite,
@@ -2099,16 +2111,11 @@
          * Draw the high score.
          */
         drawHighScore: function () {
-            if (!this.highScore || this.highScore.length === 0) {
-                return;
-            }
             this.canvasCtx.save();
-            this.canvasCtx.globalAlpha = 0.9;
-            this.canvasCtx.fillStyle = '#ffb347';
-            this.canvasCtx.font = 'bold 11px "Open Sans", sans-serif';
-            this.canvasCtx.textAlign = 'right';
-            this.canvasCtx.fillText('SWEET! New high score, u absolute berry 🫐✨',
-                this.canvasDimensions ? this.canvasDimensions : this.x - 60, this.y + 10);
+            this.canvasCtx.globalAlpha = .8;
+            for (var i = this.highScore.length - 1; i >= 0; i--) {
+                this.draw(i, parseInt(this.highScore[i], 10), true);
+            }
             this.canvasCtx.restore();
         },
 
