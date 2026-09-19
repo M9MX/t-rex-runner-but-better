@@ -1,6 +1,20 @@
 /* Copyright 2013 The Chromium Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file. */
+ * found in the LICENSE file.
+ * "The Berry Runner" reskin — sprites untouched; the berry look is done
+ * entirely with CSS color-grading on the transparent game canvas. */
+
+:root {
+  --berry-bg-a: #2a1245;
+  --berry-bg-b: #170a2b;
+  --berry-bg-c: #0d0518;
+  --berry-gold: #ffd35c;
+  --berry-purple: #c77dff;
+  --berry-muted: #a58cc9;
+  --berry-bright: #d9c9f2;
+  --berry-amber: #ffb347;
+  --berry-font: 'Press Start 2P', monospace;
+}
 
 html, body {
   padding: 0;
@@ -8,6 +22,29 @@ html, body {
   width: 100%;
   height: 100%;
 }
+
+body {
+  background:
+    radial-gradient(circle at 15% 12%, rgba(199, 125, 255, 0.22), transparent 42%),
+    radial-gradient(circle at 85% 88%, rgba(255, 179, 71, 0.18), transparent 46%),
+    linear-gradient(135deg, #2a1245 0%, #170a2b 45%, #0d0518 100%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* Night: no gradients at all — near-black purple, stars + moon only.
+   #night-cover sits above the body background but below the game. */
+#night-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 1; /* above day scenery, below stars/moon (z2) and game (z2+) */
+  pointer-events: none;
+  background: #0b0612;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+body.inverted #night-cover { opacity: 1; }
 
 .icon {
   -webkit-user-select: none;
@@ -25,10 +62,220 @@ html, body {
 }
 
 
-/* Offline page */
+/* ---- The Berry Runner chrome ------------------------------------------- */
+
+#berry-header {
+  position: fixed;
+  top: 22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+}
+
+#berry-header h1 {
+  margin: 0;
+  font-family: var(--berry-font);
+  font-size: 18px;
+  color: var(--berry-gold);
+  text-shadow: 0 0 12px rgba(255, 190, 80, 0.55), 0 0 28px rgba(199, 125, 255, 0.35);
+  letter-spacing: 1px;
+}
+
+#berry-header .berry-subtitle {
+  margin: 10px 8px 0;
+  font-family: 'Open Sans', sans-serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--berry-bright);
+  opacity: 0.85;
+}
+
+#berry-tips {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 4;
+  text-align: center;
+  padding-top: 3px;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--berry-muted);
+  opacity: 0.8;
+}
+
+#berry-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 238px; /* sits in the empty strip right under the ground line */
+  z-index: 6;
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--berry-font);
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--berry-gold);
+  text-shadow: 0 0 10px rgba(255, 190, 80, 0.55);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+#berry-banner.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#berry-banner .berry-banner-sub {
+  display: block;
+  margin-top: 10px;
+  font-family: 'Open Sans', sans-serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--berry-bright);
+  text-shadow: none;
+}
+
+#berry-footer {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  z-index: 5;
+  font-family: 'Open Sans', sans-serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--berry-muted);
+  opacity: 0.75;
+}
+
+#berry-lost {
+  position: fixed;
+  left: 10px;
+  bottom: 8px;
+  z-index: 5;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--berry-muted);
+  opacity: 0.75;
+}
+
+#berry-lost span {
+  color: var(--berry-amber);
+  font-style: normal;
+}
+
+/* Fake patch-notes line: never blocks the game, purely decorative */
+#berry-header .berry-subtitle::after {
+  content: 'v1.2.0-berry — patch notes: berries now run';
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-style: normal;
+  color: var(--berry-muted);
+  opacity: 0.65;
+}
+
+/* ---- "Evening" scenery (behind the transparent canvas) -----------------
+   Sunrise anchored to the game's real ground line (JS sets --ground-y and
+   --sun-x). The sun is clipped to the sky so it rises from BEHIND the
+   horizon; everything below the ground line gets a darker shade. */
+
+#berry-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 55% at var(--sun-x, 50%) var(--ground-y, 270px),
+      rgba(255, 190, 80, 0.22) 0%,
+      rgba(255, 190, 80, 0.08) 42%,
+      rgba(255, 190, 80, 0) 70%),
+    linear-gradient(180deg,
+      rgba(255, 179, 71, 0)    calc(var(--ground-y, 270px) - 230px),
+      rgba(255, 179, 71, 0.05) calc(var(--ground-y, 270px) - 150px),
+      rgba(255, 179, 71, 0.11) calc(var(--ground-y, 270px) - 70px),
+      rgba(255, 179, 71, 0.17) calc(var(--ground-y, 270px) - 8px),
+      rgba(255, 179, 71, 0)    var(--ground-y, 270px)),
+    linear-gradient(180deg,
+      rgba(0, 0, 0, 0)    var(--ground-y, 270px),
+      rgba(0, 0, 0, 0.34) calc(var(--ground-y, 270px) + 120px),
+      rgba(0, 0, 0, 0.60) 100%);
+  transition: opacity 700ms ease;
+}
+
+#berry-sunclip {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--ground-y, 270px);
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+
+#berry-rays {
+  position: absolute;
+  left: var(--sun-x, 50%);
+  top: calc(var(--ground-y, 270px) - 40px);
+  width: 640px;
+  height: 640px;
+  margin: -320px 0 0 -320px;
+  background: repeating-conic-gradient(from 0deg at 50% 50%,
+      rgba(255, 190, 80, 0.14) 0deg 6deg,
+      transparent 6deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 30%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.6) 30%, transparent 68%);
+  opacity: 0.8;
+}
+
+#berry-sun {
+  position: absolute;
+  left: var(--sun-x, 50%);
+  top: calc(var(--ground-y, 270px) - 150px);
+  width: 220px;
+  height: 220px;
+  margin-left: -110px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+      #ffe9a8 0%,
+      rgba(255, 211, 92, 0.9) 24%,
+      rgba(255, 179, 71, 0.45) 48%,
+      rgba(255, 179, 71, 0.12) 64%,
+      rgba(255, 179, 71, 0) 72%);
+}
+
+#berry-groundshade {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--ground-y, 270px);
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+      rgba(5, 2, 10, 0.55) 0%,
+      rgba(5, 2, 10, 0.28) 40%,
+      rgba(5, 2, 10, 0) 100%);
+  transition: opacity 700ms ease;
+}
+
+/* Night: sunrise layers fade out; the flat dark cover + the game's own
+   in-canvas moon and stars carry the whole night scene. */
+body.inverted #berry-sky { opacity: 0; }
+body.inverted #berry-sunclip { opacity: 0; }
+body.inverted #berry-groundshade { opacity: 0; }
+
+/* ---- Offline page / game area ------------------------------------------ */
 
 .offline .interstitial-wrapper {
-  color: #2b2b2b;
+  color: var(--berry-bright);
   font-size: 1em;
   line-height: 1.55;
   margin: 0 auto;
@@ -42,8 +289,14 @@ html, body {
   max-width: 600px;
   overflow: hidden;
   position: absolute;
-  top: 35px;
+  top: 95px; /* lowered horizon: header stays clear, more evening sky */
   width: 44px;
+}
+
+/* The old chrome "Press Space to start" box: hidden — it collided with the
+   Berry header. The game starts on Space/tap regardless. */
+#messageBox {
+  display: none;
 }
 
 .offline .runner-canvas {
@@ -56,8 +309,34 @@ html, body {
   z-index: 2;
 }
 
+/* Color-grade the (transparent) game canvas.
+ * Day = evening: sprites pull warm lavender/amber.
+ * Night (.inverted): moonlit silver-lilac, moon & stars show. */
+.offline .runner-canvas {
+  filter:
+    invert(0.94) sepia(0.30) hue-rotate(219deg)
+    saturate(2.6) brightness(0.78) contrast(1.12);
+}
+
+/* Night: clean moonlit sprites — desaturated silver-blue on the dark sky,
+   matching the white moon + stars instead of the muddy purple wash. */
+body.inverted .runner-canvas {
+  filter:
+    invert(0.94) sepia(0.15) hue-rotate(200deg)
+    saturate(0.85) brightness(1.02) contrast(1.05);
+}
+
+body.inverted #berry-tips,
+body.inverted #berry-header .berry-subtitle { opacity: 0.4; }
+
+/* Moonlight pool where the berry will land — a gentle jump hint */
+body.inverted .runner-container {
+  filter: drop-shadow(0 18px 14px rgba(255, 255, 255, 0.10));
+}
+
+/* Touch controller stays invisible */
 .offline .controller {
-  background: rgba(247, 247, 247, .1);
+  background: transparent;
   height: 100vh;
   left: 0;
   position: absolute;
@@ -70,6 +349,14 @@ html, body {
   display: none;
 }
 
+/* Keep the footer/counter reachable on tiny landscape screens */
+@media (max-height: 350px) {
+  #berry-header h1 { font-size: 13px; }
+  #berry-header .berry-subtitle { display: none; }
+  #berry-tips { display: none; }
+  #berry-banner { top: auto; bottom: 6px; font-size: 9px; }
+}
+
 @media (max-width: 420px) {
   .suggested-left > #control-buttons, .suggested-right > #control-buttons {
     float: none;
@@ -80,6 +367,9 @@ html, body {
     width: 100%;
     border-radius: 0;
   }
+  #berry-header h1 { font-size: 14px; }
+  #berry-banner { font-size: 9px; }
+  #berry-footer, #berry-lost { font-size: 9px; }
 }
 
 @media (max-height: 350px) {
@@ -94,6 +384,15 @@ html, body {
   }
   .nav-wrapper {
     margin-top: 30px;
+  }
+}
+
+@media (max-height: 320px) and (orientation: landscape) {
+  .icon-offline {
+    margin-bottom: 0;
+  }
+  .offline .runner-container {
+    top: 15px;
   }
 }
 
@@ -116,15 +415,6 @@ html, body {
   }
   .icon-offline {
     margin-bottom: 20px;
-  }
-}
-
-@media (max-height: 320px) and (orientation: landscape) {
-  .icon-offline {
-    margin-bottom: 0;
-  }
-  .offline .runner-container {
-    top: 10px;
   }
 }
 

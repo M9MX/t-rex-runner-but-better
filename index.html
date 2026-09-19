@@ -4,13 +4,49 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
-    <title >chrome easter egg: t-rex runner</title>
+    <title>🦖 The Berry Runner</title>
+
+    <style>
+        /* Compact-embed tweaks (authFinished iframe etc.). Everything else
+           lives in index.css. */
+        html, body { height: 100%; }
+
+        @media (max-height: 400px) {
+            #berry-sky {
+                background:
+                    radial-gradient(ellipse 60% 40% at var(--sun-x, 50%) var(--ground-y, 270px),
+                        rgba(255, 190, 80, 0.20) 0%, rgba(255, 190, 80, 0.08) 45%, transparent 70%);
+            }
+
+            #berry-sunclip { height: calc(var(--ground-y, 270px) - 6px); }
+        }
+    </style>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="index.js"></script>
 </head>
 
 <body id="t" class="offline">
+    <!-- "evening" scenery: sunrise behind the berry, darker below the ground.
+         JS anchors these layers to the game's real ground line via CSS vars. -->
+    <div id="berry-sky" aria-hidden="true"></div>
+    <div id="berry-sunclip" aria-hidden="true">
+        <div id="berry-rays"></div>
+        <div id="berry-sun"></div>
+    </div>
+    <div id="berry-groundshade" aria-hidden="true"></div>
+    <div id="night-cover" aria-hidden="true"></div>
+
+    <header id="berry-header">
+        <h1>🫐 The Berry Runner</h1>
+        <p class="berry-subtitle">while Minecraft loads, the berries run</p>
+    </header>
+
+    <div id="berry-banner" aria-hidden="true"></div>
+
+    <div id="berry-tips" aria-hidden="true">Pro tip: cacti are not edible.</div>
+
     <div id="messageBox" class="sendmessage">
          <h1 style="text-align: center;font-family: 'Open Sans', sans-serif;">Press Space to start</h1>
          <div class="niokbutton" onclick="okbuttonsend()"></div>
@@ -19,6 +55,10 @@
         <div id="main-content">
             <div class="icon icon-offline" alt=""></div>
         </div>
+        <footer id="berry-footer">it's still Cactus, only the theme was changed 🫐</footer>
+
+        <div id="berry-lost" aria-label="berries lost today">berries lost today: <span id="berries-lost-count">…</span></div>
+
         <div id="offline-resources">
             <img id="offline-resources-1x" src="assets/default_100_percent/100-offline-sprite.png">
             <img id="offline-resources-2x" src="assets/default_200_percent/200-offline-sprite.png">

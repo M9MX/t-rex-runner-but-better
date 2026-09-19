@@ -797,10 +797,15 @@
             }
 
             // Update the high score.
-            if (this.distanceRan > this.highestScore) {
+            var isRecord = this.distanceRan > this.highestScore;
+            if (isRecord) {
                 this.highestScore = Math.ceil(this.distanceRan);
                 this.distanceMeter.setHighScore(this.highestScore);
+                try {
+                    localStorage.setItem('berry-runner-high-score', String(this.highestScore));
+                } catch (e) { /* private mode etc. — score just won't persist */ }
             }
+            showBerryGameOver(isRecord);
 
             // Reset the time clock.
             this.time = getTimeStamp();
@@ -833,6 +838,10 @@
                 this.setSpeed(this.config.SPEED);
                 this.time = getTimeStamp();
                 this.containerEl.classList.remove(Runner.classes.CRASHED);
+                var berryBanner = document.getElementById('berry-banner');
+                if (berryBanner) {
+                    berryBanner.classList.remove('show');
+                }
                 this.clearCanvas();
                 this.distanceMeter.reset(this.highestScore);
                 this.horizon.reset();
@@ -847,29 +856,29 @@
          * Hides offline messaging for a fullscreen game only experience.
          */
         setArcadeMode() {
+            // Berry Runner: same "arcade" trigger as upstream, but the zoom
+            // is capped and pinned to the ground line (see below) so the
+            // horizon, scenery and layout height never shift.
             document.body.classList.add(Runner.classes.ARCADE_MODE);
             this.setArcadeModeContainerScale();
         },
 
         /**
-         * Sets the scaling for arcade mode.
+         * Mild arcade zoom. Upstream scaled the canvas by up to 3x and
+         * translated it, which broke horizon alignment in embeds. We cap the
+         * scale and pin transform-origin to the ground line, so the game
+         * grows around its own horizon: layout height and ground position
+         * stay exactly where the scenery expects them.
          */
         setArcadeModeContainerScale() {
-            const windowHeight = window.innerHeight;
-            const scaleHeight = windowHeight / this.dimensions.HEIGHT;
-            const scaleWidth = window.innerWidth / this.dimensions.WIDTH;
-            const scale = Math.max(1, Math.min(scaleHeight, scaleWidth));
-            const scaledCanvasHeight = this.dimensions.HEIGHT * scale;
-            // Positions the game container at 10% of the available vertical window
-            // height minus the game container height.
-            const translateY = Math.ceil(Math.max(0, (windowHeight - scaledCanvasHeight -
-                                                      Runner.config.ARCADE_MODE_INITIAL_TOP_POSITION) *
-                                                  Runner.config.ARCADE_MODE_TOP_POSITION_PERCENT)) *
-                  window.devicePixelRatio;
-
-            const cssScale = scale;
+            var scaleH = window.innerHeight / (this.dimensions.HEIGHT + 60);
+            var scaleW = window.innerWidth / this.dimensions.WIDTH;
+            var scale = Math.max(1, Math.min(scaleH, scaleW, 1.25));
             this.containerEl.style.transform =
-                'scale(' + cssScale + ') translateY(' + translateY + 'px)';
+                scale > 1 ? 'scale(' + scale.toFixed(3) + ')' : '';
+            if (window.berryAnchor) {
+                window.berryAnchor(); // re-pin horizon to the scaled rect
+            }
         },
         
         /**
@@ -904,12 +913,17 @@
          */
         invert: function (reset) {
             if (reset) {
-                document.body.classList.toggle(Runner.classes.INVERTED, false);
+                document.body.classList.toggle(Runner.classes.INVERTED,
+                    !!window.__berryForceNight);
                 this.invertTimer = 0;
-                this.inverted = false;
+                this.inverted = !!window.__berryForceNight;
             } else {
                 this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
-                    this.invertTrigger);
+                    this.invertTrigger || !!window.__berryForceNight);
+                // While force-night is on, never let the fade timer end it.
+                if (window.__berryForceNight) {
+                    this.inverted = true;
+                }
             }
         }
     };
@@ -1113,10 +1127,10 @@
             textSourceX += this.textImgPos.x;
             textSourceY += this.textImgPos.y;
 
-            // Game over text from sprite.
-            this.canvasCtx.drawImage(Runner.imageSprite,
-                textSourceX, textSourceY, textSourceWidth, textSourceHeight,
-                textTargetX, textTargetY, textTargetWidth, textTargetHeight);
+            // Berry Runner: the sprite "G A M E  O V E R" text is not drawn.
+            // A DOM banner (see showBerryGameOver) shows the funny lines above
+            // the canvas instead. The restart button below still comes from
+            // the sprite, untouched.
 
             // Restart button.
             this.canvasCtx.drawImage(Runner.imageSprite,
@@ -2747,6 +2761,119 @@
 
 function onDocumentLoad() {
     new Runner('.interstitial-wrapper');
+
+    // ---- The Berry Runner chrome (no game logic touched) ------------------
+    // Global so Runner.setArcadeModeContainerScale (game start) can re-pin
+    // the horizon after scaling — MUST be reachable outside this closure,
+    // otherwise startGame throws and obstacles never spawn.
+    window.berryAnchor = function () {
+        var canvas = document.querySelector('.runner-canvas');
+        if (!canvas) {
+            return;
+        }
+        var r = canvas.getBoundingClientRect();
+        var groundY = Math.max(0, Math.round(r.top + r.height * 0.845));
+        var sunX = Math.round(r.left + Math.min(r.width * 0.68, 240));
+        var root = document.documentElement.style;
+        root.setProperty('--ground-y', groundY + 'px');
+        root.setProperty('--sun-x', sunX + 'px');
+    };
+    // Keep the horizon glued to the real ground line no matter when/how the
+    // canvas appears or resizes (iframes, webviews, late layout, rotation).
+    berryAnchor();
+    window.addEventListener('resize', berryAnchor);
+    window.addEventListener('orientationchange', berryAnchor);
+    window.addEventListener('load', berryAnchor);
+    [200, 600, 1500].forEach(function (t) { setTimeout(berryAnchor, t); });
+    setTimeout(berryAnchor, 80); // first paint — canvas has just been created
+    if (window.ResizeObserver) {
+        var berryRO = new ResizeObserver(berryAnchor);
+        var berryCanvas = document.querySelector('.runner-canvas');
+        if (berryCanvas) {
+            berryRO.observe(berryCanvas);
+        }
+        berryRO.observe(document.body);
+    }
+
+    try {
+        var saved = parseInt(localStorage.getItem('berry-runner-high-score'), 10);
+        if (!isNaN(saved) && Runner.instance_ && saved > Runner.instance_.highestScore) {
+            Runner.instance_.highestScore = saved;
+        }
+    } catch (e) { /* no storage, no problem */ }
+
+    var lostEl = document.getElementById('berries-lost-count');
+    if (lostEl) {
+        var count = 0;
+        try { count = parseInt(localStorage.getItem('berry-runner-lost'), 10) || 0; } catch (e) {}
+        count += 1;
+        try { localStorage.setItem('berry-runner-lost', String(count)); } catch (e) {}
+        lostEl.textContent = count.toLocaleString();
+    }
+
+    var tips = [
+        'Pro tip: cacti are not edible.',
+        '0% of berries survive. Be the first.',
+        'the berry is not hiding. it is strategizing.',
+        'every jump is canon. every squish is also canon.',
+        'cactus 1 — berries 0 (rolling seasonal score)',
+        'the berries run because Minecraft is still loading.',
+        'no berries were consulted for this patch.'
+    ];
+    var tipEl = document.getElementById('berry-tips');
+    if (tipEl) {
+        tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+    }
+
+    // berryStarfield() removed: night uses the game's own moon + stars
+    // sprites; DOM stars looked wrong over the embedded dark background.
+
+    // Night-preview channel: the auth page can force night mode via
+    // postMessage (works even when the iframe is file:// sandboxed).
+    window.addEventListener('message', function (e) {
+        var d = e && e.data;
+        if (!d || d.type !== 'berry-night') {
+            return;
+        }
+        window.__berryForceNight = !!d.on;
+        document.body.classList.toggle('inverted', !!d.on);
+    });
+}
+
+/**
+ * Shows the game-over banner in DOM instead of the sprite text.
+ * The sprite "GAME OVER" is simply never drawn (see GameOverPanel.draw);
+ * this fills the banner above the canvas with the funny lines.
+ */
+function showBerryGameOver(isRecord) {
+    var banner = document.getElementById('berry-banner');
+    if (!banner) {
+        return;
+    }
+    var lines = isRecord ?
+        [
+            ['SWEET! New high score, u absolute berry \u{1FAD0}\u2728'],
+            ['the berry elevator goes UP', 'poggers run. the cactus is taking notes.']
+        ] :
+        [
+            ['u got squished like a berry \u{1FAD0}\u{1F480}'],
+            ['gg. the cactus remains undefeated'],
+            ['that cactus has a family, u know'],
+            ['the berry has been juiced \u{1F958}'],
+            ['next run will be different. it will not.']
+        ];
+    var pick = lines[Math.floor(Math.random() * lines.length)];
+    banner.innerHTML = '';
+    var main = document.createElement('div');
+    main.textContent = pick[0];
+    banner.appendChild(main);
+    if (pick[1]) {
+        var sub = document.createElement('span');
+        sub.className = 'berry-banner-sub';
+        sub.textContent = pick[1];
+        banner.appendChild(sub);
+    }
+    banner.classList.add('show');
 }
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
