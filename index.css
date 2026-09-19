@@ -1,7 +1,7 @@
 /* Copyright 2013 The Chromium Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
- * "The Berry Runner" reskin — sprites untouched; the berry look is done
+ * Theme reskin — sprites untouched; the look is done
  * entirely with CSS color-grading on the transparent game canvas. */
 
 :root {
@@ -62,7 +62,7 @@ body.inverted #night-cover { opacity: 1; }
 }
 
 
-/* ---- The Berry Runner chrome ------------------------------------------- */
+/* ---- Page chrome ------------------------------------------------------- */
 
 #berry-header {
   position: fixed;
@@ -96,22 +96,48 @@ body.inverted #night-cover { opacity: 1; }
   position: fixed;
   left: 0;
   right: 0;
-  top: 0;
+  bottom: 26px;
   z-index: 4;
   text-align: center;
-  padding-top: 3px;
   font-family: 'Open Sans', sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-style: italic;
   color: var(--berry-muted);
   opacity: 0.8;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+/* Start prompt — shows until the first input, then fades out */
+#berry-play {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 129px;
+  z-index: 6;
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--berry-font);
+  font-size: 11px;
+  color: var(--berry-gold);
+  text-shadow: 0 0 10px rgba(255, 190, 80, 0.55);
+  transition: opacity 250ms ease;
+  animation: berry-pulse 1.6s ease-in-out infinite;
+}
+
+#berry-play b { color: var(--berry-amber); }
+#berry-play.hide { opacity: 0; animation: none; }
+
+@keyframes berry-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
 }
 
 #berry-banner {
   position: fixed;
   left: 0;
   right: 0;
-  top: 238px; /* sits in the empty strip right under the ground line */
+  top: 219px; /* canvas now ends at 226px (top 76 + height 150) */
   z-index: 6;
   text-align: center;
   pointer-events: none;
@@ -289,7 +315,7 @@ body.inverted #berry-groundshade { opacity: 0; }
   max-width: 600px;
   overflow: hidden;
   position: absolute;
-  top: 95px; /* lowered horizon: header stays clear, more evening sky */
+  top: 76px; /* raised ~0.5cm from 95px: ground sits a touch higher */
   width: 44px;
 }
 
@@ -351,9 +377,8 @@ body.inverted .runner-container {
 
 /* Keep the footer/counter reachable on tiny landscape screens */
 @media (max-height: 350px) {
-  #berry-header h1 { font-size: 13px; }
   #berry-header .berry-subtitle { display: none; }
-  #berry-tips { display: none; }
+  #berry-tips, #berry-play { display: none; }
   #berry-banner { top: auto; bottom: 6px; font-size: 9px; }
 }
 
@@ -369,7 +394,8 @@ body.inverted .runner-container {
   }
   #berry-header h1 { font-size: 14px; }
   #berry-banner { font-size: 9px; }
-  #berry-footer, #berry-lost { font-size: 9px; }
+  #berry-footer, #berry-lost, #berry-tips { font-size: 9px; }
+  #berry-play { font-size: 9px; }
 }
 
 @media (max-height: 350px) {

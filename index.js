@@ -856,7 +856,7 @@
          * Hides offline messaging for a fullscreen game only experience.
          */
         setArcadeMode() {
-            // Berry Runner: same "arcade" trigger as upstream, but the zoom
+            // Same "arcade" trigger as upstream, but the zoom
             // is capped and pinned to the ground line (see below) so the
             // horizon, scenery and layout height never shift.
             document.body.classList.add(Runner.classes.ARCADE_MODE);
@@ -913,17 +913,12 @@
          */
         invert: function (reset) {
             if (reset) {
-                document.body.classList.toggle(Runner.classes.INVERTED,
-                    !!window.__berryForceNight);
+                document.body.classList.toggle(Runner.classes.INVERTED, false);
                 this.invertTimer = 0;
-                this.inverted = !!window.__berryForceNight;
+                this.inverted = false;
             } else {
                 this.inverted = document.body.classList.toggle(Runner.classes.INVERTED,
-                    this.invertTrigger || !!window.__berryForceNight);
-                // While force-night is on, never let the fade timer end it.
-                if (window.__berryForceNight) {
-                    this.inverted = true;
-                }
+                    this.invertTrigger);
             }
         }
     };
@@ -1127,7 +1122,7 @@
             textSourceX += this.textImgPos.x;
             textSourceY += this.textImgPos.y;
 
-            // Berry Runner: the sprite "G A M E  O V E R" text is not drawn.
+            // The sprite "G A M E  O V E R" text is not drawn.
             // A DOM banner (see showBerryGameOver) shows the funny lines above
             // the canvas instead. The restart button below still comes from
             // the sprite, untouched.
@@ -2762,7 +2757,7 @@
 function onDocumentLoad() {
     new Runner('.interstitial-wrapper');
 
-    // ---- The Berry Runner chrome (no game logic touched) ------------------
+    // ---- Page chrome (no game logic touched) ------------------
     // Global so Runner.setArcadeModeContainerScale (game start) can re-pin
     // the horizon after scaling — MUST be reachable outside this closure,
     // otherwise startGame throws and obstacles never spawn.
@@ -2813,31 +2808,45 @@ function onDocumentLoad() {
 
     var tips = [
         'Pro tip: cacti are not edible.',
-        '0% of berries survive. Be the first.',
-        'the berry is not hiding. it is strategizing.',
-        'every jump is canon. every squish is also canon.',
-        'cactus 1 — berries 0 (rolling seasonal score)',
-        'the berries run because Minecraft is still loading.',
-        'no berries were consulted for this patch.'
+        'the cactus is always early. you can be earlier.',
+        'jumping is free. missing is not.',
+        'the bird does not flap for your amusement.',
+        '0% of players have ever quit out of respect for the cactus.',
+        'no cacti were harmed. several runners were.',
+        'the score is not a personality. still, nice score.'
     ];
     var tipEl = document.getElementById('berry-tips');
     if (tipEl) {
         tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+        // Rotate the tip every 7s with a quick fade
+        var tipIdx = Math.floor(Math.random() * tips.length);
+        setInterval(function () {
+            tipIdx = (tipIdx + 1) % tips.length;
+            tipEl.style.opacity = 0;
+            setTimeout(function () {
+                tipEl.textContent = tips[tipIdx];
+                tipEl.style.opacity = 0.8;
+            }, 300);
+        }, 7000);
     }
+
+    // "tap / space to play" prompt: hide on first real input
+    var playEl = document.getElementById('berry-play');
+    var hidePlay = function () {
+        if (playEl) {
+            playEl.classList.add('hide');
+        }
+        document.removeEventListener('keydown', hidePlay);
+        document.removeEventListener('touchstart', hidePlay);
+        document.removeEventListener('mousedown', hidePlay);
+    };
+    document.addEventListener('keydown', hidePlay);
+    document.addEventListener('touchstart', hidePlay);
+    document.addEventListener('mousedown', hidePlay);
 
     // berryStarfield() removed: night uses the game's own moon + stars
     // sprites; DOM stars looked wrong over the embedded dark background.
 
-    // Night-preview channel: the auth page can force night mode via
-    // postMessage (works even when the iframe is file:// sandboxed).
-    window.addEventListener('message', function (e) {
-        var d = e && e.data;
-        if (!d || d.type !== 'berry-night') {
-            return;
-        }
-        window.__berryForceNight = !!d.on;
-        document.body.classList.toggle('inverted', !!d.on);
-    });
 }
 
 /**
@@ -2852,14 +2861,13 @@ function showBerryGameOver(isRecord) {
     }
     var lines = isRecord ?
         [
-            ['SWEET! New high score, u absolute berry \u{1FAD0}\u2728'],
-            ['the berry elevator goes UP', 'poggers run. the cactus is taking notes.']
+            ['SWEET! New high score \u2728'],
+            ['personal best. the cactus is taking notes.']
         ] :
         [
-            ['u got squished like a berry \u{1FAD0}\u{1F480}'],
+            ['u got squished \u{1F480}'],
             ['gg. the cactus remains undefeated'],
             ['that cactus has a family, u know'],
-            ['the berry has been juiced \u{1F958}'],
             ['next run will be different. it will not.']
         ];
     var pick = lines[Math.floor(Math.random() * lines.length)];
